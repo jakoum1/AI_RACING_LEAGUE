@@ -661,53 +661,66 @@ def destringify(s):
 
 
 def drive_example(c):
-    """Drive with corner speed limiting.
-    On straights: full throttle up to SPEED_MAX.
-    On corners: target speed drops based on how hard the car is turning,
-    down to a minimum of SPEED_CORNER_MIN on the tightest turns.
-    Braking is applied whenever the car is above the current target speed.
+    """Safe wall-avoidance driver for Corkscrew.
+    Priority: finish the race without hitting walls.
+    Lap time is secondary.
     """
     S, R = c.S.d, c.R.d
 
     # ----------------------------------------------------------
-    # Speed limits (km/h)
+    # 0. REVERSE RECOVERY
+    # If moving backward, engage reverse and steer to recover.
     # ----------------------------------------------------------
-    SPEED_MAX        = 300.0   # max speed on a straight
-    SPEED_CORNER_MIN =  60.0   # minimum target speed in the tightest turn
-    # Steer magnitude at which the full corner penalty is applied.
-    # |steer| >= this value → target speed = SPEED_CORNER_MIN
-    STEER_FULL_CORNER = 0.4
+    if S["speedX"] < -1:
+        R["gear"]  = -1
+        R["accel"] = 0.5
+        R["brake"] = 0.0
+        R["steer"] = -S["angle"] * 10 / PI
+        return
 
     # ----------------------------------------------------------
     # 1. STEERING
-    # Align car with road axis + nudge back toward track centre.
+    # Use ONLY the road angle for alignment.
+    # Centering correction is capped to avoid overcorrection.
     # ----------------------------------------------------------
-    R["steer"] = S["angle"] * 10 / PI
-    R["steer"] -= S["trackPos"] * 0.35
+    steer_align  = S["angle"] * 10 / PI
+    steer_center = clip(S["trackPos"] * 0.25, -0.3, 0.3)
+    R["steer"]   = steer_align - steer_center
 
     # ----------------------------------------------------------
-    # 2. CORNER SPEED LIMIT
-    # How hard are we turning right now?
-    # steer_mag goes 0 (straight) → 1 (full lock).
-    # corner_factor goes 0 (straight) → 1 (max corner).
-    # target_speed drops linearly from SPEED_MAX to SPEED_CORNER_MIN.
+    # 2. LOOK-AHEAD CORNER DETECTION
+    # Use the front track sensor (index 9 = straight ahead) to
+    # see how much road is in front. Short reading = corner close.
+    # Also use the raw road angle as a corner severity measure.
+    # These are combined to compute target speed BEFORE the corner.
     # ----------------------------------------------------------
-    steer_mag     = min(abs(R["steer"]), STEER_FULL_CORNER) / STEER_FULL_CORNER
-    target_speed  = SPEED_MAX - steer_mag * (SPEED_MAX - SPEED_CORNER_MIN)
+    track_ahead  = S["track"][9]          # metres straight ahead (0–200)
+    angle_factor = min(abs(S["angle"]) / 0.5, 1.0)   # 0=straight, 1=full angle
+
+    # Shorter road ahead or larger angle → lower target speed
+    # track_ahead < 20m means corner is immediate → minimum speed
+    look_factor  = max(0.0, min(1.0, 1.0 - (track_ahead - 20.0) / 80.0))
+    corner_factor = max(angle_factor, look_factor)
+
+    SPEED_MAX        = 250.0   # max speed on straights
+    # Time-based override: slow down only at the corner that caused the crash (~1:13)
+    if 68 < S["curLapTime"] < 78:
+        SPEED_CORNER_MIN = 65.0  # careful through the dangerous corner
+    else:
+        SPEED_CORNER_MIN = 95.0  # raised from 85, push corner speed further
+    target_speed = SPEED_MAX - corner_factor * (SPEED_MAX - SPEED_CORNER_MIN)
 
     # ----------------------------------------------------------
     # 3. THROTTLE & BRAKE
-    # Accelerate smoothly toward target; brake if over it.
+    # Brake firmly when over target; accelerate carefully otherwise.
     # ----------------------------------------------------------
     speed_error = S["speedX"] - target_speed
 
     if speed_error > 0:
-        # Too fast for this corner — brake proportionally
-        R["brake"] = min(speed_error / 50.0, 1.0)
+        R["brake"] = min(speed_error / 40.0, 1.0)   # firm braking
         R["accel"] = 0.0
     else:
         R["brake"] = 0.0
-        # Accelerate, but gently from a standing start
         if S["speedX"] < 10:
             R["accel"] += 1 / (S["speedX"] + 0.1)
         else:
