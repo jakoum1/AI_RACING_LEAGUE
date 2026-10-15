@@ -1,54 +1,61 @@
-# 🏎️ AI Racing League – Autonomous AI Driver
+# 🏎️ AI Racing League – Autonomous AI Driver (TORCS)
 
-An autonomous AI driver for **TORCS** (The Open Race Car Simulator), written in **Python** for the **IBM AI Racing League**. The car drives the **Corkscrew** track on its own, using only the simulator's sensor data.
+An autonomous driving client for the **TORCS** racing simulator, built on the competition's `snakeoil3_gym.py` and tested on the **Corkscrew** track, for the **IBM AI Racing League**.
 
-> **Team:** `<TEAM NAME>`
-> **University:** `<UNIVERSITY NAME>`
-> **Members:** `<NAME 1>`, `<NAME 2>`, ...
+> **Author:** Youssef Jakoum (solo participant)
+> **University / School:** `<UNIVERSITY NAME>`
 
 ---
+
+## 🎯 Problem
+
+The original driving logic had no real speed control and no braking, so the car got stuck on the track and crashed into the walls. The goal was to make the car **complete the race without crashing**, while keeping the **lap time as low as possible**.
 
 ## 📂 Repository Files
 
 | File | Description |
 |------|-------------|
-| `demonstration_video.mp4` | Demonstration video (~2 min 16 s): our AI driver racing on the Corkscrew track, followed by a screen recording scrolling through our IBM work |
-| `snakeoil3_gym.py` | Python client that connects to TORCS, plus our driver logic in the `drive_example` function |
+| `snakeoil3_gym.py` | Python client for TORCS with my modified driving logic (`drive_example` function) |
+| `demonstration_vid.mp4` | Demonstration video (~2 min 16 s): the car driving the Corkscrew track |
+| `ibmbob_env.mp4` | Short video (~45 s): TORCS setup, running the client, and my conversation with IBM Bob |
 | `README.md` | Project documentation |
 
-## 🧠 Our Approach
+## 🔧 Enhancements
 
-Our driver is a **rule-based controller**: at every simulation step it reads the car's sensors and decides steering, throttle, brake and gear. The main design goal was **finishing the race safely without hitting the walls**; lap time came second.
+**First iteration (done with IBM Bob)**
 
-The logic is built from five parts:
+- **Corner-aware speed control:** the target speed varies with the steering input, so the car slows down before tight corners instead of hitting the walls.
+- **Proportional braking:** the original code had no braking at all. I added brake force proportional to how far the car is above its target speed, which removed the stuck-and-crash problem.
+- **Steering stabilization:** the steering gain was reduced (from 15 to 10) to limit oscillation in the tight S-section, and the track-position centering was strengthened (from 0.10 to 0.35) to keep the car away from the walls.
 
-1. **Reverse recovery** – if the car is moving backward, it engages reverse gear and steers to get back on track.
-2. **Steering** – the car aligns with the road using the track angle, with a small capped correction towards the center of the track to avoid over-steering.
-3. **Look-ahead corner detection** – the front track sensor (distance to the road edge straight ahead) and the road angle are combined into a "corner severity" value. The car then sets a **target speed before the corner**: up to 250 on straights and down to 95 in corners.
-4. **Throttle and brake** – the car brakes progressively when it is faster than the target speed, and accelerates smoothly otherwise.
-5. **Traction control and automatic gears** – throttle is reduced if the rear wheels spin faster than the front ones, and gears (1 to 6) are chosen from the current speed.
+**Final version (current `snakeoil3_gym.py`)**
 
-**Tuning:** we found the section of the lap where the car crashed (around 1:13 into the lap) and added a lower corner speed (65) for that part of the track. The minimum corner speed elsewhere was raised from 85 to 95 to improve lap time.
+- **Look-ahead corner detection:** the straight-ahead track sensor and the road angle are combined into a "corner severity" value, which sets the target speed *before* the corner (up to 250 on straights, down to 95 in corners).
+- **Dangerous-corner override:** a lower minimum speed (65) is used on the section that caused a crash around 1:13 into the lap.
+- **Capped centering correction:** the track-position correction is limited to avoid over-steering.
+- **Reverse recovery:** if the car moves backward, it engages reverse and steers back onto the track.
+- **Traction control and automatic gears:** throttle is cut when the rear wheels spin faster than the front wheels, and gears 1 to 6 are selected from the current speed.
 
-**Use of IBM Granite:** `<describe how you used Granite: brainstorming, code ideas, debugging...>`
+## 🤖 How I Used IBM Bob
 
-## 🎥 Demonstration
+I used **IBM Bob** (free trial version) as a coding assistant during development, to:
 
-`demonstration_video.mp4` shows the car completing the Corkscrew track with our controller, and also includes a screen recording (scrolling through the content) of the work we completed with IBM (`<IBM SkillsBuild courses / IBM Granite credential>`). `<Add a sentence about what to look for in the video, e.g. the corner at 1:13>`
+1. **Compare** the original and modified versions of the driving code and identify exactly what changed, and its effect on speed and stability.
+2. **Analyze** which parameters affect crashes on this specific track: steering gain, track-position centering, minimum corner speed and the braking ramp.
+3. **Apply and tune** these changes, and **create backup versions** of the code between iterations.
+
+The conversation with IBM Bob (task list, tuning steps and my questions when the lap time got worse) is shown in `ibmbob_env.mp4`.
 
 ## ⏱️ Results
 
 | Metric | Value |
 |--------|-------|
 | Track | Corkscrew |
+| Race completed | Yes, no crash in the demonstration video |
 | Best lap time | `<MM:SS.ms>` |
-
-## 🎓 IBM SkillsBuild
-
-Our team completed the IBM SkillsBuild learning path, including the **IBM Granite** course. It helped us `<what you learned / how it helped>`.
 
 ## 🙌 Acknowledgements
 
 - IBM SkillsBuild and the IBM AI Racing League
-- The TORCS project
-- `snakeoil3_gym.py` is based on the standard Python client for TORCS (SCR)
+- IBM Bob
+- The TORCS project; `snakeoil3_gym.py` is based on the standard Python client for TORCS (SCR)
