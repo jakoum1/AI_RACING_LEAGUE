@@ -52,7 +52,7 @@ The conversation with IBM Bob (task list, tuning steps and my questions when the
 |--------|-------|
 | Track | Corkscrew |
 | Race completed | Yes, no crash in the demonstration video |
-| Best lap time | `<MM:SS.ms>` |
+| Best lap time | `<14:48>` |
 
 ## 🙌 Acknowledgements
 
