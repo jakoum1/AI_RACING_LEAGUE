@@ -3,7 +3,7 @@
 An autonomous driving client for the **TORCS** racing simulator, built on the competition's `snakeoil3_gym.py` and tested on the **Corkscrew** track, for the **IBM AI Racing League**.
 
 > **Author:** Youssef Jakoum (solo participant)
-> **University / School:** `<UNIVERSITY NAME>`
+> **University / School:** 
 
 ---
 
